@@ -19,6 +19,14 @@ const Toolbox = () => {
         <div className={classes.selectOptionContainer}>
           <div className={classes.toolBoxLabel}>stroke color</div>
           <div className={classes.colorsContainer}>
+          <div>
+              <input
+                className={classes.colorPicker}
+                type="color"
+                value={strokeColor}
+                onChange={(e) => changeStrokeHandler(activeToolItem, e.target.value)}
+              ></input>
+            </div>
             {Object.keys(COLORS).map((color) => {
               return (
                 <div
@@ -40,6 +48,27 @@ const Toolbox = () => {
         <div className={classes.selectOptionContainer}>
           <div className={classes.toolBoxLabel}>fill color</div>
           <div className={classes.colorsContainer}>
+          {fillColor === null ? (
+              <div
+                className={cx(classes.colorPicker, classes.noFillColorBox)}
+                onClick={() => changeFillHandler(activeToolItem, COLORS.BLACK)}
+              ></div>
+            ) : (
+              <div>
+                <input
+                  className={classes.colorPicker}
+                  type="color"
+                  value={strokeColor}
+                  onChange={(e) => changeFillHandler(activeToolItem, e.target.value)}
+                ></input>
+              </div>
+            )}
+            <div
+              className={cx(classes.colorBox, classes.noFillColorBox, {
+                [classes.activeColorBox]: fillColor === null,
+              })}
+              onClick={() => changeFillHandler(activeToolItem, null)}
+            ></div>
             {Object.keys(COLORS).map((color) => {
               return (
                 <div

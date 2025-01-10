@@ -1,4 +1,4 @@
-import React, { useReducer } from "react";
+import React, { useCallback, useReducer } from "react";
 import boardcontext from "./board-context";
 import { BOARD_ACTIONS, TOOL_ACTION_TYPES, TOOL_ITEMS } from "../constant";
 import rough from "roughjs/bin/rough";
@@ -90,28 +90,57 @@ const boardReducer = (state, action) => {
         const newElements=[...state.elements];
         newElements[index].text=action.payload.text;
         //newElements[index].stroke=action.payload.stroke;
+
+        const newHistory=state.history.slice(0,state.index+1);
+        newHistory.push(newElements);
         return {
             ...state,
             elements:newElements,
             toolActionType:TOOL_ACTION_TYPES.NONE,
+            history:newHistory,
+            state:state.index+1,
         }
     }
-    // case BOARD_ACTIONS.DRAW_UP: {
-    //   return {
-    //     ...state,
-    //     toolActionType: TOOL_ACTION_TYPES.NONE,
-    //   };
-    // }
+    case BOARD_ACTIONS.DRAW_UP: {
+      const elementsCopy = [...state.elements];
+      const newHistory=state.history.slice(0,state.index+1);
+      newHistory.push(elementsCopy);
+      return {
+        ...state,
+        history:newHistory,
+        index:state.index+1,
+      };
+    }
     case BOARD_ACTIONS.ERASE: {
         const { clientX, clientY } = action.payload;
         let newElements = [...state.elements];
         newElements = newElements.filter((element) => {
             return !(isPointNearElement(element,clientX,clientY));  //if the point is near the element then we will remove that element
         });
+      const newHistory=state.history.slice(0,state.index+1);
+      newHistory.push(newElements);
         return {
             ...state,
             elements: newElements, 
+            history:newHistory,
+            index:state.index+1,
         }
+    }
+    case BOARD_ACTIONS.UNDO:{
+      if(state.index<=0)return state;
+      return{
+        ...state,
+        elements:state.history[state.index-1],
+        index:state.index-1,
+      }
+    }
+    case BOARD_ACTIONS.REDO:{
+      if(state.index>=state.history.length-1)return state;
+      return{
+        ...state,
+        elements:state.history[state.index+1],
+        index:state.index+1,
+      }
     }
     default:
       return state;
@@ -121,6 +150,8 @@ const initialBoardState = {
   // two states are here
   activeToolItem: TOOL_ITEMS.BRUSH, //to track the current tool
   elements: [],
+  history:[[]],
+  index:0,
   toolActionType: TOOL_ACTION_TYPES.NONE, //to track the current action type like if we are in drawing mode or not or in erasingn mode
 };
 const BoardProvider = ({ children }) => {
@@ -203,6 +234,11 @@ const BoardProvider = ({ children }) => {
   const boardMouseUpHandler = () => {
     //setState
     if(boardState.toolActionType===TOOL_ACTION_TYPES.WRITING)return;
+    if(boardState.toolActionType===TOOL_ACTION_TYPES.DRAWING){
+      dispatchBoardAction({
+        type:BOARD_ACTIONS.DRAW_UP,
+      })
+    }
     dispatchBoardAction({
     //   type: "DRAW_UP",
       type:BOARD_ACTIONS.CHANGE_ACTION_TYPE,
@@ -221,6 +257,16 @@ const BoardProvider = ({ children }) => {
         }
     })
   };
+  const boardUndoHandler=useCallback(()=>{
+    dispatchBoardAction({
+      type:BOARD_ACTIONS.UNDO,
+    })
+  },[]);
+  const boardRedoHandler=useCallback(()=>{
+    dispatchBoardAction({
+      type:BOARD_ACTIONS.REDO,
+    })
+  },[]);
   const boardContextValue = {
     //all the states are here or state handler(setState)
     activeToolItem: boardState.activeToolItem,
@@ -231,6 +277,8 @@ const BoardProvider = ({ children }) => {
     toolActionType: boardState.toolActionType,
     boardMouseUpHandler,
     textAreaBlurHandler,
+    undo:boardUndoHandler,
+    redo:boardRedoHandler,
   };
 
   return (
